@@ -1,0 +1,5 @@
+# cc65 build outputs
+*.o
+*.prg
+*.map
+*.lbl
