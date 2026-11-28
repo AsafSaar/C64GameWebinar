@@ -42,7 +42,8 @@
 #define RES_CRUSHED   0x20  /* a falling crate landed on Tank */
 #define RES_WON       0x40  /* Tank entered the exit */
 
-#define MAX_FALLS 4
+#define MAX_FALLS  4
+#define MAX_CRATES 8
 
 /* One crate fall: the crate moved from (col, from_row) to (col, to_row). */
 struct fall {
@@ -63,6 +64,12 @@ struct room {
     unsigned char dug;        /* dirt tiles removed */
     unsigned char fall_count; /* falls recorded by the last room_move() */
     struct fall   falls[MAX_FALLS];
+    /* Crate positions, lowest row first. Crates only move straight down,
+       so this order stays valid within every column. The grid also holds
+       TILE_CRATE at each position. */
+    unsigned char crate_count;
+    unsigned char crate_col[MAX_CRATES];
+    unsigned char crate_row[MAX_CRATES];
 };
 
 extern struct room room;

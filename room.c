@@ -53,6 +53,18 @@ void room_load(const char* const* map)
             room.tiles[r][c] = t;
         }
     }
+
+    /* Crate list, lowest row first (see room.h). */
+    room.crate_count = 0;
+    for (r = ROOM_ROWS; r-- > 0; ) {
+        for (c = 0; c < ROOM_COLS; ++c) {
+            if (room.tiles[r][c] == TILE_CRATE && room.crate_count < MAX_CRATES) {
+                room.crate_col[room.crate_count] = c;
+                room.crate_row[room.crate_count] = r;
+                ++room.crate_count;
+            }
+        }
+    }
 }
 
 static unsigned char tank_at(unsigned char c, unsigned char r)
@@ -61,45 +73,46 @@ static unsigned char tank_at(unsigned char c, unsigned char r)
 }
 
 /*
- * Settle every crate. Rows are scanned bottom-up so that a crate resting on
- * another crate falls after the one beneath it has moved.
+ * Settle every crate. Crates are visited lowest first, so a crate resting
+ * on another crate falls after the one beneath it has moved.
  */
 static unsigned char settle_crates(void)
 {
     unsigned char res = 0;
-    unsigned char r, c, row;
+    unsigned char i, c, r, row;
 
     room.fall_count = 0;
-    for (r = ROOM_ROWS - 1; r-- > 0; ) {
-        for (c = 0; c < ROOM_COLS; ++c) {
-            if (room.tiles[r][c] != TILE_CRATE) {
-                continue;
+    for (i = 0; i < room.crate_count; ++i) {
+        c = room.crate_col[i];
+        r = room.crate_row[i];
+        if (r + 1 >= ROOM_ROWS) {
+            continue;
+        }
+        /* Rule 6: a resting crate does not start to fall while Tank
+           is directly beneath it. */
+        if (room.tiles[r + 1][c] != TILE_OPEN || tank_at(c, r + 1)) {
+            continue;
+        }
+        /* Rule 5: fall while the tile below is open. */
+        row = r;
+        room.tiles[row][c] = TILE_OPEN;
+        while (row + 1 < ROOM_ROWS && room.tiles[row + 1][c] == TILE_OPEN) {
+            ++row;
+            if (tank_at(c, row)) {
+                /* Rule 7: an already-falling crate crushes Tank. */
+                room.status = STATUS_DEAD;
+                res |= RES_CRUSHED;
+                break;
             }
-            /* Rule 6: a resting crate does not start to fall while Tank
-               is directly beneath it. */
-            if (room.tiles[r + 1][c] != TILE_OPEN || tank_at(c, r + 1)) {
-                continue;
-            }
-            /* Rule 5: fall while the tile below is open. */
-            row = r;
-            room.tiles[row][c] = TILE_OPEN;
-            while (row + 1 < ROOM_ROWS && room.tiles[row + 1][c] == TILE_OPEN) {
-                ++row;
-                if (tank_at(c, row)) {
-                    /* Rule 7: an already-falling crate crushes Tank. */
-                    room.status = STATUS_DEAD;
-                    res |= RES_CRUSHED;
-                    break;
-                }
-            }
-            room.tiles[row][c] = TILE_CRATE;
-            res |= RES_FELL;
-            if (room.fall_count < MAX_FALLS) {
-                room.falls[room.fall_count].col = c;
-                room.falls[room.fall_count].from_row = r;
-                room.falls[room.fall_count].to_row = row;
-                ++room.fall_count;
-            }
+        }
+        room.tiles[row][c] = TILE_CRATE;
+        room.crate_row[i] = row;
+        res |= RES_FELL;
+        if (room.fall_count < MAX_FALLS) {
+            room.falls[room.fall_count].col = c;
+            room.falls[room.fall_count].from_row = r;
+            room.falls[room.fall_count].to_row = row;
+            ++room.fall_count;
         }
     }
     return res;
