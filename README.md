@@ -2,6 +2,17 @@
 
 A Commodore 64 game written in C with [cc65](https://cc65.github.io/), starring Tank, a red Pembroke Welsh Corgi who rescues floppy disks.
 
+## Webinar slides and recordings
+
+Follow the build from a clean development machine to Tank’s first room. Each session includes the slides used on stream, with commands and Claude prompts you can copy.
+
+| Session | Slide deck | Recording |
+| --- | --- | --- |
+| Day 1 · Set up Claude Code, Git, cc65 and VICE, then build and test a one-pickup C64 game | [Day 1 slides](docs/Day-1-C64-live-deck.html) | [Watch Day 1](https://www.youtube.com/watch?v=lFDokWm9i78) |
+| Day 2 · Compare two room sketches in Claude Design, hand a layout to Claude Code and test it in VICE | [Day 2 slides](docs/Day-2-C64-live-deck.html) | [Watch Day 2](https://www.youtube.com/watch?v=2bf6DfAC61s) |
+
+To present a deck, open its slide link on GitHub, select **Download raw file**, then open the downloaded HTML in your browser. The slides and artwork work offline. Use the left and right arrow keys to move between slides.
+
 ## Current state
 
 One playable room: **Room B, "Long Way Home"**. The level spec is [`docs/room-b-handoff.md`](docs/room-b-handoff.md), and [`docs/room-b-reference.png`](docs/room-b-reference.png) is a reference render of the room.
@@ -84,7 +95,7 @@ x64sc -autostart tank.prg
 | `gfx.h`, `gfx.c` | C64 drawing: VIC-II setup, multicolour tile charset, sprites, HUD, crate fall animation |
 | `tests/test_room.c` | PC-side logic test, run with `.\build.ps1 -Test` |
 | `build.ps1` | Build script, with `-Run` (launch VICE) and `-Test` (run the logic test) |
-| `docs/` | Room B level spec and reference render |
+| `docs/` | Webinar slide decks, Room B level spec and reference render |
 | `tank.prg`, `test_room.prg` | Build output (git-ignored) |
 
 ### Graphics
