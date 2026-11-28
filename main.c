@@ -1,150 +1,118 @@
 /*
- * Tank's Disk Rescue - experiment 1
+ * Tank's Disk Rescue - Room B, "Long Way Home".
  *
- * Tank (a red Pembroke Welsh Corgi) stands beside two floppy disks.
- *   D  collects the nearest remaining disk: +10 each, so 0 -> 10 -> 20.
- *      Once both are gone, D does nothing.
- *   R  resets the scene.
+ * Tank (a red Pembroke Welsh Corgi) digs through the room to fetch the disk,
+ * then drops the crate out of the shaft that leads to the exit.
  *
- * Build: cl65 -t c64 -O -o tank.prg main.c
+ * main.c is the frame loop and input only. The rules live in room.c,
+ * the room map in rooms.c and all drawing in gfx.c.
+ *
+ * Controls: joystick in port 2, or W A S D. Hold a direction to keep moving.
+ *           R restarts the room. Fire also restarts after a crush or a win.
+ *
+ * Build: .\build.ps1   (see README.md)
  */
-
-#include <conio.h>
 #include <c64.h>
+#include "room.h"
+#include "rooms.h"
+#include "gfx.h"
 
-#define TANK_X   4
-#define TANK_Y   9
-#define DISK_COUNT 2
-#define DISK_Y  10
-#define DISK_POINTS 10
-#define SCREEN_COLS 40
-#define SCORE_Y      1
+/* KERNAL keyboard matrix code of the key currently held ($CB). */
+#define KEY_HELD  (*(volatile unsigned char*)0xCB)
+#define KEY_W     9
+#define KEY_A     10
+#define KEY_S     13
+#define KEY_D     18
+#define KEY_R     17
 
-/* Block art: each letter is one coloured character cell, '.' is empty. */
-/* o = red coat, w = white, k = black, g = dark grey                    */
-static const char* const tank_art[] = {
-    "......o..o..",
-    "......oooo..",
-    "......okoowk",
-    "oooooooowww.",
-    "ooooooooww..",
-    "ooooooooo...",
-    "w.w...w.w..."
-};
-#define TANK_ROWS (sizeof tank_art / sizeof tank_art[0])
+#define JOY_UP    0x01
+#define JOY_DOWN  0x02
+#define JOY_LEFT  0x04
+#define JOY_RIGHT 0x08
+#define JOY_FIRE  0x10
 
-static const char* const disk_art[] = {
-    "gggggg",
-    "gwwwwg",
-    "gwwwwg",
-    "gggggg",
-    "ggkkgg",
-    "gggggg"
-};
-#define DISK_ROWS (sizeof disk_art / sizeof disk_art[0])
+#define NO_DIR    0xFF
 
-static unsigned char score;
-/* Column of each disk, nearest to Tank first. */
-static const unsigned char disk_x[DISK_COUNT] = { 20, 29 };
+/* Frames before a held direction repeats, then between repeats. */
+#define REPEAT_FIRST 14
+#define REPEAT_NEXT  8
 
-static unsigned char collected;     /* how many disks Tank has grabbed */
+static unsigned char held_dir = NO_DIR;
+static unsigned char repeat_timer;
+static unsigned char prev_buttons;
 
-static unsigned char art_color(char c)
+static void start_room(void)
 {
-    switch (c) {
-        case 'o': return COLOR_RED;
-        case 'w': return COLOR_WHITE;
-        case 'k': return COLOR_BLACK;
-        default:  return COLOR_GRAY1;
-    }
+    room_load(room_b_map);
+    gfx_draw_room();
 }
 
-/* Draw block art, or erase it (blank every cell) when erase is non-zero. */
-static void draw_art(unsigned char x, unsigned char y,
-                     const char* const* rows, unsigned char count,
-                     unsigned char erase)
+static void do_move(unsigned char dir)
 {
-    unsigned char r, i;
-    const char* p;
+    unsigned char res = room_move(dir);
 
-    for (r = 0; r < count; ++r) {
-        p = rows[r];
-        for (i = 0; p[i] != '\0'; ++i) {
-            if (p[i] == '.') {
-                continue;
-            }
-            gotoxy(x + i, y + r);
-            if (erase) {
-                revers(0);
-            } else {
-                revers(1);
-                textcolor(art_color(p[i]));
-            }
-            cputc(' ');
-        }
+    if (!res) {
+        return;                             /* blocked */
     }
-    revers(0);
-}
-
-static void draw_score(void)
-{
-    /* "SCORE: " is 7 characters, plus one or two digits. */
-    unsigned char len = (score >= 10) ? 9 : 8;
-
-    textcolor(COLOR_WHITE);
-    cclearxy(0, SCORE_Y, SCREEN_COLS);      /* wipe the old, differently centred text */
-    gotoxy((SCREEN_COLS - len) / 2, SCORE_Y);
-    cprintf("SCORE: %u", score);
-}
-
-static void reset_scene(void)
-{
-    unsigned char i;
-
-    score = 0;
-    collected = 0;
-
-    clrscr();
-    draw_score();
-
-    textcolor(COLOR_YELLOW);
-    cputsxy(1, 3, "TANK'S DISK RESCUE");
-
-    draw_art(TANK_X, TANK_Y, tank_art, TANK_ROWS, 0);
-    for (i = 0; i < DISK_COUNT; ++i) {
-        draw_art(disk_x[i], DISK_Y, disk_art, DISK_ROWS, 0);
+    gfx_draw_tile(room.tank_col, room.tank_row);    /* dug dirt, taken disk */
+    gfx_place_tank();
+    if (res & RES_DISK) {
+        gfx_update_disk();
+        gfx_draw_hud();
     }
-
-    textcolor(COLOR_WHITE);
-    cputsxy(1, 22, "D = COLLECT DISK    R = RESET");
-}
-
-static void collect_disk(void)
-{
-    if (collected >= DISK_COUNT) {
-        return;             /* all disks are gone: D does nothing more */
+    if (res & RES_EXIT_OPEN) {
+        gfx_draw_tile(room.exit_col, room.exit_row);
     }
-    draw_art(disk_x[collected], DISK_Y, disk_art, DISK_ROWS, 1);
-    ++collected;
-    score += DISK_POINTS;
-    draw_score();
+    if (res & RES_FELL) {
+        gfx_animate_falls();
+    }
+    if (res & (RES_CRUSHED | RES_WON)) {
+        gfx_update_tank();
+        gfx_draw_hud();
+    }
 }
 
 void main(void)
 {
-    char key;
+    unsigned char joy, key, dir, buttons, pressed;
 
-    bordercolor(COLOR_BLUE);
-    bgcolor(COLOR_LIGHTBLUE);
-    cursor(0);
-    reset_scene();
+    gfx_init();
+    start_room();
 
     for (;;) {
-        key = cgetc();
-        if (key == 'd' || key == 'D') {
-            collect_disk();
-        } else if (key == 'r' || key == 'R') {
-            reset_scene();
+        gfx_wait_frame();
+
+        joy = (unsigned char)~CIA1.pra & 0x1F;  /* port 2, active low */
+        key = KEY_HELD;
+
+        /* Restart buttons react to the press, not to holding them. */
+        buttons = (key == KEY_R ? 1 : 0) | (joy & JOY_FIRE ? 2 : 0);
+        pressed = buttons & ~prev_buttons;
+        prev_buttons = buttons;
+        if ((pressed & 1) || ((pressed & 2) && room.status != STATUS_PLAYING)) {
+            held_dir = NO_DIR;
+            start_room();
+            continue;
+        }
+        if (room.status != STATUS_PLAYING) {
+            continue;
+        }
+
+        if      ((joy & JOY_UP)    || key == KEY_W) dir = DIR_UP;
+        else if ((joy & JOY_DOWN)  || key == KEY_S) dir = DIR_DOWN;
+        else if ((joy & JOY_LEFT)  || key == KEY_A) dir = DIR_LEFT;
+        else if ((joy & JOY_RIGHT) || key == KEY_D) dir = DIR_RIGHT;
+        else                                        dir = NO_DIR;
+
+        if (dir == NO_DIR) {
+            held_dir = NO_DIR;
+        } else if (dir != held_dir) {
+            held_dir = dir;
+            repeat_timer = REPEAT_FIRST;
+            do_move(dir);
+        } else if (--repeat_timer == 0) {
+            repeat_timer = REPEAT_NEXT;
+            do_move(dir);
         }
     }
 }
