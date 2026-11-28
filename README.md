@@ -4,7 +4,7 @@ A Commodore 64 game written in C with [cc65](https://cc65.github.io/), starring 
 
 ## Game progress
 
-| Game 1 · Title screen | Game 2 · Room B, “Long Way Home” |
+| Day 1 · Title screen | Day 2 · Room B, “Long Way Home” |
 | --- | --- |
 | ![Tank faces two floppy disks above the keyboard controls on a blue C64 title screen.](docs/screenshots/game-1-title-screen.png) | ![Tank starts beside the green exit. Blue brick walls separate him from the disk in the upper-right corridor.](docs/screenshots/game-2-long-way-home.png) |
 
