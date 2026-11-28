@@ -96,6 +96,7 @@ x64sc -autostart tank.prg
 | `tests/test_room.c` | PC-side logic test, run with `.\build.ps1 -Test` |
 | `build.ps1` | Build script, with `-Run` (launch VICE) and `-Test` (run the logic test) |
 | `docs/` | Webinar slide decks, Room B level spec and reference render |
+| `LICENSE` | MIT License |
 | `tank.prg`, `test_room.prg` | Build output (git-ignored) |
 
 ### Graphics
@@ -119,3 +120,7 @@ These come from the old prototype roadmap. None are designed for Room B yet.
 - Title and game-over screens
 - Lives, and what happens after Tank is crushed (for now the room just restarts)
 - Tank's animation and facing
+
+## License
+
+Released under the [MIT License](LICENSE).
