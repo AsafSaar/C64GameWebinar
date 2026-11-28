@@ -2,6 +2,12 @@
 
 A Commodore 64 game written in C with [cc65](https://cc65.github.io/), starring Tank, a red Pembroke Welsh Corgi who rescues floppy disks.
 
+## Game progress
+
+| Game 1 · Title screen | Game 2 · Room B, “Long Way Home” |
+| --- | --- |
+| ![Tank faces two floppy disks above the keyboard controls on a blue C64 title screen.](docs/screenshots/game-1-title-screen.png) | ![Tank starts beside the green exit. Blue brick walls separate him from the disk in the upper-right corridor.](docs/screenshots/game-2-long-way-home.png) |
+
 ## Webinar slides and recordings
 
 Follow the build from a clean development machine to Tank’s first room. Each session includes the slides used on stream, with commands and Claude prompts you can copy.
